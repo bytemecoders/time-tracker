@@ -4,6 +4,7 @@
 
 ## Figma file
 <img src="public/screenshot.png" />
+
 [Time Tracker design file](https://www.figma.com/file/Rg0YqzVFhWgtTaBpyUYcdw/Time-Tracker?type=design&node-id=103%3A1175&mode=design&t=PmPT59Q6PuIzbBR5-1)
 
 ## Development
