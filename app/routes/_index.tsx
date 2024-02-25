@@ -1,5 +1,16 @@
-import type { ActionFunctionArgs, MetaFunction } from "@remix-run/node";
-import { Form, redirect, useSearchParams } from "@remix-run/react";
+import type {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+  MetaFunction,
+} from "@remix-run/node";
+import {
+  Form,
+  redirect,
+  useLoaderData,
+  useSearchParams,
+} from "@remix-run/react";
+import { TimersTable } from "~/components/Timers";
+
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
@@ -9,6 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { getTimers, startTimer, stopTimer } from "~/models/timers.server";
+import { getUserId } from "~/models/user.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -17,25 +30,45 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-// export const loader = async () => {
-//   return {message: 'Hello World'}
-// };
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const userId = await getUserId(request);
+
+  const timers = getTimers(userId);
+  return { userId, timers };
+};
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+  const userId = await getUserId(request);
   const url = new URL(request.url);
-  const status = url.searchParams.get("status") ?? 'stopped';
+  const status = url.searchParams.get("status") ?? "stopped";
+  const form = await request.formData();
 
-  console.log('status', status)
+  const description = form.get("description") as string;
+  const project = form.get("project") as string;
+  const priority = Number(form.get("priority"));
+
+  if (!description || !project || !priority) {
+    return redirect("/?error=invalid");
+  }
+
   if (status === "stopped") {
+    startTimer({
+      userId,
+      description,
+      project,
+      priority,
+      start: new Date(),
+    });
     return redirect("/?status=start");
   } else {
+    stopTimer(userId);
     return redirect("/?status=stopped");
   }
 };
 
 export default function Index() {
-  // const data = useLoaderData<typeof loader>();
-  const [search] = useSearchParams()
+  const { timers } = useLoaderData<typeof loader>();
+  const [search] = useSearchParams();
   const status = search.get("status") ?? "stopped";
 
   return (
@@ -47,7 +80,7 @@ export default function Index() {
         <div className="flex gap-2">
           <Input
             type="text"
-            name="task"
+            name="description"
             placeholder="Type something..."
             className="flex-grow"
           />
@@ -57,7 +90,7 @@ export default function Index() {
             placeholder="00:00:00"
             className="w-auto"
           />
-          <Button type="submit" >
+          <Button type="submit">
             {status === "stopped" ? "Start " : "Stop "}
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -98,6 +131,11 @@ export default function Index() {
           </Select>
         </div>
       </Form>
+      <div className="mt-4">
+        <h2 className="text-lg font-bold">Timers</h2>
+        <TimersTable timers={timers} />
+
+      </div>
     </div>
   );
 }
